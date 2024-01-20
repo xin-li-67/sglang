@@ -45,6 +45,7 @@ class ModelRpcServer(rpyc.Service):
         self.tp_rank = tp_rank
         self.tp_size = server_args.tp_size
         self.schedule_heuristic = server_args.schedule_heuristic
+        self.server_args = server_args
 
         # Init model and tokenizer
         self.model_config = ModelConfig(
@@ -213,6 +214,18 @@ class ModelRpcServer(rpyc.Service):
         req.stream = recv_req.stream
         req.tokenizer = self.tokenizer
 
+        # add an FSM init event
+        if req.sampling_params.regex is not None:
+            tokenizer_args_dict = {
+                "tokenizer_mode": self.server_args.tokenizer_mode,
+                "trust_remote_code": self.server_args.trust_remote_code,
+            }
+            req.regex_fsm_entry = self.regex_fsm_cache.init_fsm_in_background(
+                req.sampling_params.regex,
+                self.server_args.tokenizer_path,
+                tokenizer_args_dict,
+            )
+
         # Truncate long prompts
         req.input_ids = req.input_ids[: self.model_config.context_len - 1]
         req.sampling_params.max_new_tokens = min(
@@ -322,11 +335,10 @@ class ModelRpcServer(rpyc.Service):
             self.model_config.vocab_size, self.int_token_logit_bias
         )
 
-        # init the regex fsm before first sampling
+        # init the regex fsm state before first sampling
         for req in batch.reqs:
             if req.sampling_params.regex is not None:
                 req.regex_fsm_state = 0
-                req.regex_fsm = self.regex_fsm_cache.get_fsm(req.sampling_params.regex)
 
         if batch.extend_num_tokens != 0:
             # Forward

@@ -44,8 +44,8 @@ class Req:
         self.normalized_logprob = None
 
         # for constrained decoding
-        self.regex_fsm = None
-        self.regex_fsm_state = None
+        self.regex_fsm_entry = None
+        self.regex_fsm_state = 0
 
     def max_new_tokens(self):
         return self.sampling_params.max_new_tokens
@@ -358,15 +358,14 @@ class Batch:
         logits.div_(self.temperatures)
         logits.add_(self.logit_bias)
 
-        has_regex = any(req.regex_fsm is not None for req in self.reqs)
+        has_regex = any(req.regex_fsm_entry is not None for req in self.reqs)
         if has_regex:
             allowed_mask = torch.empty_like(logits[0], dtype=torch.bool)
             for i, req in enumerate(self.reqs):
-                if req.regex_fsm is not None:
+                if req.regex_fsm_entry is not None:
+                    fsm = req.regex_fsm_entry.get_fsm()
                     allowed_mask.zero_()
-                    allowed_mask[
-                        req.regex_fsm.allowed_token_ids(req.regex_fsm_state)
-                    ] = 1
+                    allowed_mask[fsm.allowed_token_ids(req.regex_fsm_state)] = 1
                     logits[i].masked_fill_(~allowed_mask, float("-inf"))
 
         # TODO(lmzheng): apply penalty
@@ -383,8 +382,9 @@ class Batch:
         if has_regex:
             batch_next_token_ids_cpu = batch_next_token_ids.cpu().numpy()
             for i, req in enumerate(self.reqs):
-                if req.regex_fsm is not None:
-                    req.regex_fsm_state = req.regex_fsm.next_state(
+                if req.regex_fsm_entry is not None:
+                    fsm = req.regex_fsm_entry.get_fsm()
+                    req.regex_fsm_state = fsm.next_state(
                         req.regex_fsm_state, batch_next_token_ids_cpu[i]
                     )
 
