@@ -22,7 +22,8 @@ srt = ["fastapi", "psutil", "rpyc", "torch", "uvloop", "uvicorn", "zmq", "vllm>=
        "interegular", "lark", "numba", "pydantic"]
 openai = ["openai>=1.0"]
 anthropic = ["anthropic"]
-all = ["sglang[srt]", "sglang[openai]", "sglang[anthropic]"]
+constraint = ["outlines>=0.0.24"]
+all = ["sglang[srt]", "sglang[openai]", "sglang[anthropic]", "sglang[constraint]"]
 
 [project.urls]
 "Homepage" = "https://github.com/sgl-project/sglang"

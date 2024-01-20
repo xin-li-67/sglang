@@ -1,8 +1,5 @@
 import threading
 
-from outlines.fsm.fsm import RegexFSM
-from outlines.models.transformers import TransformerTokenizer
-
 
 class FSMCacheEntry:
     def __init__(self):
@@ -21,6 +18,9 @@ class FSMCache:
 
     def init_fsm_in_background(self, regex, tokenizer_path, tokenizer_args_dict):
         def init_fsm(regex, fsm_cache_entry, tokenizer_path, tokenizer_args_dict):
+            from outlines.fsm.fsm import RegexFSM
+            from outlines.models.transformers import TransformerTokenizer
+
             outlines_tokenizer = TransformerTokenizer(
                 tokenizer_path, **tokenizer_args_dict
             )
